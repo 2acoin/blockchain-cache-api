@@ -572,6 +572,21 @@ app.get('/transaction/pool', (req, res) => {
     })
 })
 
+/* Get the current transaction pool detail*/
+app.get('/transaction/pool/detail', (req, res) => {
+  const start = process.hrtime()
+
+  database.getTransactionPoolDetail()
+    .then(transactions => {
+      Helpers.logHTTPRequest(req, process.hrtime(start))
+      return res.json(transactions)
+    })
+    .catch(error => {
+      Helpers.logHTTPError(req, error, process.hrtime(start))
+      return res.status(500).send()
+    })
+})
+
 /* Get a transaction by its hash */
 app.get('/transaction/:search', (req, res) => {
   const start = process.hrtime()
