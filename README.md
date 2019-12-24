@@ -55,7 +55,7 @@ export MYSQL_DATABASE=yourdbname
 node index.js
 ```
 
-5) Optionally, install PM2 or another process manager to keep the service running.
+5) Optionally, install PM2 or another process manager to keep the service running..
 
 ```bash
 npm install -g pm2@latest
