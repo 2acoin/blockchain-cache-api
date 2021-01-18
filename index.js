@@ -67,7 +67,8 @@ const database = new DatabaseBackend({
   password: env.mysql.password,
   database: env.mysql.database,
   connectionLimit: env.mysql.connectionLimit,
-  redis: env.mysql.redis
+  redis: env.mysql.redis,
+  usePoolMonitor: env.usePoolMonitor
 })
 
 Logger.log('[DB] Connected to database backend at %s:%s', database.host, database.port)
@@ -721,11 +722,13 @@ app.post('/randomOutputs', (req, res) => {
     amounts[i] = amount
   }
 
-  /* Go and try to get our random outputs */
-  database.getRandomOutputsForAmounts(amounts, mixin)
-    .then(randomOutputs => {
+  /* Go and try to get our random outputs for a daemon via rabbit MQ */
+  rabbit.requestReply(Config.queues.relayAgent, { randomOutputs: { amounts, mixin } }, 5000)
+    .then(response => {
+      if (response.status && response.status.toLowerCase() !== 'ok') throw new Error('Could not get outputs')
+
       Helpers.logHTTPRequest(req, JSON.stringify(req.body), process.hrtime(start))
-      return res.json(randomOutputs)
+      return res.json(response.outs)
     })
     .catch(error => {
       Helpers.logHTTPError(req, error, process.hrtime(start))
@@ -819,7 +822,7 @@ app.post('/transaction', (req, res) => {
   }, 9000)
     .then(response => {
       /* Log and spit back the response */
-      Helpers.logHTTPRequest(req, util.format('[%s] [I:%s] [O:%s] [A:%s] [F:%s] [%s] %s', txHash, tx.inputs.length, tx.outputs.length, tx.amount || 'N/A', tx.fee || 'N/A', (response.status) ? response.status.yellow : 'Error'.red, response.error.red), process.hrtime(start))
+      Helpers.logHTTPRequest(req, util.format('[%s] [I:%s] [O:%s] [A:%s] [F:%s] [%s] %s', txHash, tx.inputs.length, tx.outputs.length, tx.amount || 0, tx.fee || 0, (response.status) ? response.status.yellow : 'Error'.red, response.error.red), process.hrtime(start))
 
       if (response.status) {
         return res.json(response)
@@ -1055,7 +1058,7 @@ app.post('/sendrawtransaction', (req, res) => {
   }, 9000)
     .then(response => {
       /* Log and spit back the response */
-      Helpers.logHTTPRequest(req, util.format('[%s] [I:%s] [O:%s] [A:%s] [F:%s] [%s] %s', txHash, tx.inputs.length, tx.outputs.length, tx.amount || 'N/A', tx.fee || 'N/A', (response.status) ? response.status.yellow : 'Error'.red, response.error.red), process.hrtime(start))
+      Helpers.logHTTPRequest(req, util.format('[%s] [I:%s] [O:%s] [A:%s] [F:%s] [%s] %s', txHash, tx.inputs.length, tx.outputs.length, tx.amount || 0, tx.fee || 0, (response.status) ? response.status.yellow : 'Error'.red, response.error.red), process.hrtime(start))
 
       if (response.status) {
         return res.json(response)
